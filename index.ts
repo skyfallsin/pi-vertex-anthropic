@@ -194,12 +194,27 @@ function transformMessages(
 }
 
 // =============================================================================
-// Config
+// Config - UPDATE THESE VALUES FOR YOUR SETUP
 // =============================================================================
 
-const PROJECT = "aerial-acre-391523";
+/**
+ * Your Google Cloud Project ID
+ * Find with: gcloud config get-value project
+ */
+const PROJECT = "your-gcp-project-id";
+
+/**
+ * Vertex AI Region
+ * Options: us-east5, us-central1, europe-west1, asia-southeast1
+ */
 const REGION = "us-east5";
-const GCLOUD_PATH = "/home/sprite/google-cloud-sdk/bin/gcloud";
+
+/**
+ * Path to gcloud CLI binary
+ * Find with: which gcloud
+ * Common: /usr/local/bin/gcloud or ~/google-cloud-sdk/bin/gcloud
+ */
+const GCLOUD_PATH = "/usr/local/bin/gcloud";
 
 function getAccessToken(): string {
 	return execSync(`${GCLOUD_PATH} auth print-access-token`, {

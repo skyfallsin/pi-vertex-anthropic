@@ -886,32 +886,43 @@ export default function (pi: ExtensionAPI) {
 						`Region: ${region}\n\n` +
 						`To persist these settings, add to your ~/.zshrc or ~/.bashrc:\n\n` +
 						`  export VERTEX_PROJECT_ID="${project}"\n` +
-						`  export VERTEX_REGION="${region}"\n`,
+						`  export VERTEX_REGION="${region}"\n\n` +
+						`If authentication fails later, run: gcloud auth login`,
 				});
 
-				// Return credentials
+				// Return credentials (gcloud auth persists separately)
 				return {
-					refresh: JSON.stringify({ project, region, gcloudPath }),
+					refresh: Date.now().toString(), // Just a timestamp for tracking
 					access: "gcloud",
 					expires: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
 				};
 			},
 			async refreshToken(credentials) {
-				// Always use fresh token from gcloud
-				return credentials;
+				// Tokens are always fresh from gcloud, just return existing credentials
+				return {
+					...credentials,
+					refresh: Date.now().toString(), // Update timestamp
+				};
 			},
-			getApiKey(credentials) {
-				// Parse saved config
+			getApiKey(_credentials) {
+				// Get fresh token from gcloud each time
 				try {
-					const saved = JSON.parse(credentials.refresh);
-					// Update process env from saved credentials
-					if (saved.project) process.env.VERTEX_PROJECT_ID = saved.project;
-					if (saved.region) process.env.VERTEX_REGION = saved.region;
-				} catch {}
+					const gcloudPath = config.gcloudPath;
+					const token = execSync(`${gcloudPath} auth print-access-token`, {
+						encoding: "utf-8",
+						timeout: 5000,
+						stdio: ["ignore", "pipe", "pipe"],
+					}).trim();
 
-				// Return command that Pi will execute to get token
-				const gcloudPath = config.gcloudPath;
-				return `!${gcloudPath} auth print-access-token`;
+					if (!token || token.length < 20) {
+						throw new Error("Invalid token from gcloud");
+					}
+
+					return token;
+				} catch (error) {
+					const msg = error instanceof Error ? error.message : "Unknown error";
+					throw new Error(`Failed to get gcloud access token: ${msg}\n\nRun: gcloud auth login`);
+				}
 			},
 		},
 

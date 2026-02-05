@@ -764,22 +764,21 @@ export default function (pi: ExtensionAPI) {
 
 					if (!project) {
 						// List available projects
+						let projectPrompt = "Enter GCP project ID:";
 						try {
 							const projects = execSync(`${gcloudPath} projects list --format="value(projectId)"`, {
 								encoding: "utf-8",
 								stdio: ["ignore", "pipe", "ignore"],
-							}).trim().split("\n");
+								timeout: 10000,
+							}).trim().split("\n").filter(p => p && p !== "(unset)");
 
-							if (projects.length > 0) {
-								callbacks.onAuth({
-									type: "info",
-									message: `Available projects:\n${projects.map(p => `  - ${p}`).join("\n")}`,
-								});
+							if (projects.length > 0 && projects.length < 20) {
+								projectPrompt = `Available projects:\n${projects.map(p => `  - ${p}`).join("\n")}\n\nEnter project ID:`;
 							}
 						} catch {}
 
 						const projectInput = await callbacks.onPrompt({
-							message: "Enter GCP project ID:",
+							message: projectPrompt,
 						});
 
 						if (!projectInput || projectInput.trim() === "") {
@@ -802,21 +801,14 @@ export default function (pi: ExtensionAPI) {
 				let region = process.env.VERTEX_REGION;
 
 				if (!region) {
-					const regions = [
-						"global (recommended for latest models)",
-						"us-east5",
-						"us-central1",
-						"europe-west1",
-						"asia-southeast1",
-					];
-
-					callbacks.onAuth({
-						type: "info",
-						message: `Available regions:\n${regions.map((r, i) => `  ${i + 1}. ${r}`).join("\n")}`,
-					});
-
 					const regionChoice = await callbacks.onPrompt({
-						message: "Select region (1-5) or enter custom:",
+						message: "Select region:\n\n" +
+							"  1. global (recommended for latest models)\n" +
+							"  2. us-east5\n" +
+							"  3. us-central1\n" +
+							"  4. europe-west1\n" +
+							"  5. asia-southeast1\n\n" +
+							"Enter 1-5 or custom region name:",
 					});
 
 					if (regionChoice === "1") {
@@ -829,8 +821,10 @@ export default function (pi: ExtensionAPI) {
 						region = "europe-west1";
 					} else if (regionChoice === "5") {
 						region = "asia-southeast1";
+					} else if (regionChoice && regionChoice.trim()) {
+						region = regionChoice.trim();
 					} else {
-						region = regionChoice || "us-east5";
+						region = "global"; // Default to global
 					}
 
 					process.env.VERTEX_REGION = region;

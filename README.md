@@ -4,6 +4,8 @@ A [Pi coding agent](https://github.com/badlogic/pi) extension that enables Claud
 
 ## Features
 
+- 🎯 **Interactive `/login` Setup** - Guided configuration with gcloud installation help
+- 🌍 **Global Region Support** - Access latest models via `global` endpoint
 - 🚀 **Direct Vertex AI Integration** - Uses Google Cloud's Vertex AI Anthropic endpoint
 - 🔐 **gcloud Authentication** - Leverages your existing `gcloud` credentials
 - 💰 **Cost Tracking** - Full token usage and cost calculation support
@@ -11,6 +13,7 @@ A [Pi coding agent](https://github.com/badlogic/pi) extension that enables Claud
 - 📦 **Prompt Caching** - Automatic ephemeral caching for efficiency
 - 🛡️ **Robust Error Handling** - Handles incomplete tool calls and aborted requests
 - 🔄 **Cross-Provider Compatible** - Uses Pi's message transformation for reliability
+- 🛠️ **Zero Config Editing** - Everything configured through `/login` command
 
 ## Why Use This?
 
@@ -29,68 +32,58 @@ A [Pi coding agent](https://github.com/badlogic/pi) extension that enables Claud
 
 ### Install Extension
 
-**Option 1: Quick Install (Recommended)**
+**One-line install:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/skyfallsin/pi-vertex-anthropic/main/install.sh | bash
 ```
 
-**Option 2: Manual Install**
+**Manual install:**
 
 ```bash
-# Create the extension directory
 mkdir -p ~/.pi/agent/extensions/vertex-anthropic
-
-# Clone this repository
 git clone https://github.com/skyfallsin/pi-vertex-anthropic.git ~/.pi/agent/extensions/vertex-anthropic
+cd ~/.pi/agent/extensions/vertex-anthropic && npm install
+```
 
-# Install dependencies
-cd ~/.pi/agent/extensions/vertex-anthropic
-npm install
+**Then run:**
+
+```bash
+pi
+/login  # Interactive setup - does everything for you!
 ```
 
 ## Configuration
 
-**The Pi Way™** - Use environment variables (recommended):
-
-```bash
-# Add to your ~/.zshrc or ~/.bashrc
-export VERTEX_PROJECT_ID="your-gcp-project-id"
-export VERTEX_REGION="us-east5"  # Optional, defaults to us-east5
-export VERTEX_GCLOUD_PATH="/path/to/gcloud"  # Optional, auto-detected
-
-# Reload shell
-source ~/.zshrc
-```
-
-The extension auto-detects `gcloud` from common locations. Only set `VERTEX_GCLOUD_PATH` if you have a non-standard installation.
-
-### Authentication
-
-Use Pi's `/login` command:
+**Use `/login` - It does everything for you!**
 
 ```bash
 pi
 /login  # Select "Google Cloud Vertex AI (gcloud)"
 ```
 
-This tests your gcloud authentication and project configuration.
+The interactive login flow will:
+1. ✅ Check if gcloud is installed (offers to help install if missing)
+2. ✅ Run `gcloud auth login` if needed
+3. ✅ Help you select or enter a GCP project
+4. ✅ Let you choose a region (global, us-east5, etc.)
+5. ✅ Enable Vertex AI API if not enabled
+6. ✅ Test authentication
+7. ✅ Show you what to add to your shell config
 
-**Manual Setup:**
+**That's it!** The `/login` command handles all configuration.
+
+### Persist Settings (Optional)
+
+After `/login`, add the suggested environment variables to your shell config:
 
 ```bash
-# 1. Authenticate with gcloud
-gcloud auth login
-
-# 2. Set your project
-gcloud config set project YOUR_PROJECT_ID
-
-# 3. Enable Vertex AI API
-gcloud services enable aiplatform.googleapis.com
-
-# 4. Test access
-gcloud auth print-access-token
+# Add to ~/.zshrc or ~/.bashrc
+export VERTEX_PROJECT_ID="your-project-id"
+export VERTEX_REGION="global"  # or us-east5, europe-west1, etc.
 ```
+
+This persists your settings across terminal sessions.
 
 ## Usage
 
@@ -282,12 +275,13 @@ https://console.cloud.google.com/iam-admin/quotas
 ## Supported Regions
 
 Vertex AI Anthropic models are available in:
-- `us-east5` (default)
+- **`global`** (recommended) - Latest models and features
+- `us-east5`
 - `us-central1`
 - `europe-west1`
 - `asia-southeast1`
 
-Update the `REGION` constant in `index.ts` to use a different region.
+The `/login` command lets you choose your preferred region.
 
 ## Cost Comparison
 

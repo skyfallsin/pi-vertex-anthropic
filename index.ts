@@ -511,7 +511,13 @@ function streamVertexAnthropic(
 
 			// Make request to Vertex AI streamRawPredict endpoint
 			const vertexModelId = (model as any).vertexModelId || model.id;
-			const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${project}/locations/${region}/publishers/anthropic/models/${vertexModelId}:streamRawPredict`;
+			
+			// Handle global region (no region prefix in domain)
+			const endpoint = region === "global"
+				? "aiplatform.googleapis.com"
+				: `${region}-aiplatform.googleapis.com`;
+			
+			const url = `https://${endpoint}/v1/projects/${project}/locations/${region}/publishers/anthropic/models/${vertexModelId}:streamRawPredict`;
 
 			const response = await fetch(url, {
 				method: "POST",
@@ -656,59 +662,262 @@ function streamVertexAnthropic(
 export default function (pi: ExtensionAPI) {
 	const config = getConfig();
 
+	// Handle global region endpoint
+	const endpoint = config.region === "global"
+		? "aiplatform.googleapis.com"
+		: `${config.region}-aiplatform.googleapis.com`;
+
 	// Register provider with OAuth-style /login support
 	pi.registerProvider("vertex-anthropic", {
-		baseUrl: `https://${config.region}-aiplatform.googleapis.com`,
+		baseUrl: `https://${endpoint}`,
 		api: "vertex-anthropic-api",
 
 		// OAuth configuration for /login command
 		oauth: {
 			name: "Google Cloud Vertex AI (gcloud)",
 			async login(callbacks) {
+				callbacks.onAuth({ type: "progress", message: "Setting up Google Cloud Vertex AI..." });
+
+				// Step 1: Check if gcloud is installed
+				let gcloudPath = config.gcloudPath;
 				try {
-					// Test gcloud auth
-					const token = execSync(`${config.gcloudPath} auth print-access-token`, {
-						encoding: "utf-8",
-						timeout: 10000,
-					}).trim();
+					execSync(`${gcloudPath} version`, { stdio: "ignore", timeout: 2000 });
+				} catch {
+					const install = await callbacks.onPrompt({
+						message: "gcloud CLI not found. Install Google Cloud SDK?\n\n" +
+							"This will download and install gcloud from:\n" +
+							"https://cloud.google.com/sdk/docs/install\n\n" +
+							"(y/n)",
+					});
 
-					if (!token || token.includes("ERROR")) {
-						throw new Error("Not authenticated with gcloud");
-					}
-
-					// Verify project access
-					const project = process.env.VERTEX_PROJECT_ID || config.project;
-					if (project === "your-gcp-project-id") {
-						await callbacks.onPrompt({
-							message: "Set VERTEX_PROJECT_ID environment variable or edit the extension",
+					if (install?.toLowerCase() === "y") {
+						callbacks.onAuth({
+							type: "info",
+							message: "Opening installation guide in browser...",
 						});
-						throw new Error("No GCP project configured");
+						callbacks.onAuth({
+							url: "https://cloud.google.com/sdk/docs/install",
+						});
+						throw new Error("Please install gcloud CLI and run /login again");
+					} else {
+						throw new Error("gcloud CLI required. Install from: https://cloud.google.com/sdk/docs/install");
+					}
+				}
+
+				// Step 2: Check authentication
+				callbacks.onAuth({ type: "progress", message: "Checking gcloud authentication..." });
+				let needsAuth = false;
+				try {
+					const token = execSync(`${gcloudPath} auth print-access-token`, {
+						encoding: "utf-8",
+						timeout: 5000,
+						stdio: ["ignore", "pipe", "ignore"],
+					}).trim();
+					needsAuth = !token || token.includes("ERROR") || token.length < 20;
+				} catch {
+					needsAuth = true;
+				}
+
+				if (needsAuth) {
+					const doAuth = await callbacks.onPrompt({
+						message: "Not authenticated with gcloud. Run 'gcloud auth login' now? (y/n)",
+					});
+
+					if (doAuth?.toLowerCase() === "y") {
+						callbacks.onAuth({ type: "progress", message: "Running gcloud auth login..." });
+						callbacks.onAuth({
+							type: "info",
+							message: "A browser window will open for authentication",
+						});
+
+						try {
+							execSync(`${gcloudPath} auth login`, { stdio: "inherit" });
+						} catch (error) {
+							throw new Error("Authentication failed. Please try: gcloud auth login");
+						}
+					} else {
+						throw new Error("Authentication required. Run: gcloud auth login");
+					}
+				}
+
+				// Step 3: Get/Set project
+				callbacks.onAuth({ type: "progress", message: "Configuring project..." });
+				let project = process.env.VERTEX_PROJECT_ID;
+
+				if (!project || project === "your-gcp-project-id") {
+					// Try to get current project
+					try {
+						const currentProject = execSync(`${gcloudPath} config get-value project`, {
+							encoding: "utf-8",
+							stdio: ["ignore", "pipe", "ignore"],
+						}).trim();
+
+						if (currentProject && currentProject !== "(unset)") {
+							const use = await callbacks.onPrompt({
+								message: `Use current project '${currentProject}'? (y/n)`,
+							});
+							if (use?.toLowerCase() === "y") {
+								project = currentProject;
+							}
+						}
+					} catch {}
+
+					if (!project) {
+						// List available projects
+						try {
+							const projects = execSync(`${gcloudPath} projects list --format="value(projectId)"`, {
+								encoding: "utf-8",
+								stdio: ["ignore", "pipe", "ignore"],
+							}).trim().split("\n");
+
+							if (projects.length > 0) {
+								callbacks.onAuth({
+									type: "info",
+									message: `Available projects:\n${projects.map(p => `  - ${p}`).join("\n")}`,
+								});
+							}
+						} catch {}
+
+						const projectInput = await callbacks.onPrompt({
+							message: "Enter GCP project ID:",
+						});
+
+						if (!projectInput || projectInput.trim() === "") {
+							throw new Error("Project ID required");
+						}
+						project = projectInput.trim();
+
+						// Set as default
+						try {
+							execSync(`${gcloudPath} config set project ${project}`, { stdio: "ignore" });
+						} catch {}
+					}
+				}
+
+				// Save to environment (user will need to add to their shell config)
+				process.env.VERTEX_PROJECT_ID = project;
+
+				// Step 4: Select region
+				callbacks.onAuth({ type: "progress", message: "Configuring region..." });
+				let region = process.env.VERTEX_REGION;
+
+				if (!region) {
+					const regions = [
+						"global (recommended for latest models)",
+						"us-east5",
+						"us-central1",
+						"europe-west1",
+						"asia-southeast1",
+					];
+
+					callbacks.onAuth({
+						type: "info",
+						message: `Available regions:\n${regions.map((r, i) => `  ${i + 1}. ${r}`).join("\n")}`,
+					});
+
+					const regionChoice = await callbacks.onPrompt({
+						message: "Select region (1-5) or enter custom:",
+					});
+
+					if (regionChoice === "1") {
+						region = "global";
+					} else if (regionChoice === "2") {
+						region = "us-east5";
+					} else if (regionChoice === "3") {
+						region = "us-central1";
+					} else if (regionChoice === "4") {
+						region = "europe-west1";
+					} else if (regionChoice === "5") {
+						region = "asia-southeast1";
+					} else {
+						region = regionChoice || "us-east5";
 					}
 
-					// Store dummy credentials (we use gcloud each time)
-					return {
-						refresh: "gcloud",
-						access: "gcloud",
-						expires: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
-					};
+					process.env.VERTEX_REGION = region;
+				}
+
+				// Step 5: Enable Vertex AI API
+				callbacks.onAuth({ type: "progress", message: "Checking Vertex AI API..." });
+				try {
+					const enabled = execSync(
+						`${gcloudPath} services list --enabled --filter="name:aiplatform.googleapis.com" --format="value(name)"`,
+						{ encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }
+					).trim();
+
+					if (!enabled) {
+						const enable = await callbacks.onPrompt({
+							message: "Vertex AI API not enabled. Enable it now? (y/n)",
+						});
+
+						if (enable?.toLowerCase() === "y") {
+							callbacks.onAuth({ type: "progress", message: "Enabling Vertex AI API (this may take a minute)..." });
+							execSync(`${gcloudPath} services enable aiplatform.googleapis.com`, { stdio: "inherit" });
+							callbacks.onAuth({ type: "info", message: "Vertex AI API enabled!" });
+						} else {
+							callbacks.onAuth({
+								type: "warning",
+								message: "API not enabled. You'll need to enable it manually:\n" +
+									`  gcloud services enable aiplatform.googleapis.com --project=${project}`,
+							});
+						}
+					}
 				} catch (error) {
 					callbacks.onAuth({
-						type: "error",
-						message:
-							error instanceof Error
-								? error.message
-								: "Failed to authenticate. Run: gcloud auth login",
+						type: "warning",
+						message: "Could not check API status. If requests fail, enable it manually:\n" +
+							`  gcloud services enable aiplatform.googleapis.com --project=${project}`,
 					});
-					throw error;
 				}
+
+				// Step 6: Test authentication
+				callbacks.onAuth({ type: "progress", message: "Testing authentication..." });
+				try {
+					const token = execSync(`${gcloudPath} auth print-access-token`, {
+						encoding: "utf-8",
+						timeout: 5000,
+					}).trim();
+
+					if (!token || token.length < 20) {
+						throw new Error("Invalid token");
+					}
+				} catch (error) {
+					throw new Error("Authentication test failed. Please run: gcloud auth login");
+				}
+
+				// Success! Show next steps
+				callbacks.onAuth({
+					type: "success",
+					message: `✓ Configured successfully!\n\n` +
+						`Project: ${project}\n` +
+						`Region: ${region}\n\n` +
+						`To persist these settings, add to your ~/.zshrc or ~/.bashrc:\n\n` +
+						`  export VERTEX_PROJECT_ID="${project}"\n` +
+						`  export VERTEX_REGION="${region}"\n`,
+				});
+
+				// Return credentials
+				return {
+					refresh: JSON.stringify({ project, region, gcloudPath }),
+					access: "gcloud",
+					expires: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
+				};
 			},
 			async refreshToken(credentials) {
 				// Always use fresh token from gcloud
 				return credentials;
 			},
-			getApiKey(_credentials) {
+			getApiKey(credentials) {
+				// Parse saved config
+				try {
+					const saved = JSON.parse(credentials.refresh);
+					// Update process env from saved credentials
+					if (saved.project) process.env.VERTEX_PROJECT_ID = saved.project;
+					if (saved.region) process.env.VERTEX_REGION = saved.region;
+				} catch {}
+
 				// Return command that Pi will execute to get token
-				return `!${config.gcloudPath} auth print-access-token`;
+				const gcloudPath = config.gcloudPath;
+				return `!${gcloudPath} auth print-access-token`;
 			},
 		},
 

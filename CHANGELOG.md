@@ -10,11 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **BREAKING**: Replaced hardcoded configuration with environment variables
 - **BREAKING**: Configuration now uses `VERTEX_PROJECT_ID`, `VERTEX_REGION`, `VERTEX_GCLOUD_PATH`
-- Integrated with Pi's `/login` command for proper authentication
-- Auto-detection of gcloud binary from common locations
-- Simplified installation - no manual file editing required
+- **Complete `/login` rewrite** - Now fully interactive and helpful:
+  - Detects if gcloud is missing and offers installation help
+  - Runs `gcloud auth login` if needed
+  - Helps select/configure GCP project
+  - Interactive region selection (including `global`)
+  - Enables Vertex AI API if needed
+  - Tests authentication before completing
+  - Shows exact commands to persist settings
 
 ### Added
+- **Global region support** - Access latest models via `global` endpoint
 - All available Claude models on Vertex AI (7 models total)
   - Claude Sonnet 4.5 (Extended Thinking)
   - Claude 3.5 Sonnet v2
@@ -23,13 +29,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Claude 3 Opus
   - Claude 3 Sonnet
   - Claude 3 Haiku
-- OAuth-style provider registration for `/login` support
-- Helpful notifications when configuration is missing
-- Better error messages and troubleshooting guidance
+- Interactive project selection from your available projects
+- Automatic API enablement during `/login`
+- Helpful progress messages during setup
+- Persist configuration in credentials for reuse
 
 ### Fixed
 - TypeScript import compatibility issues
 - Extension now follows Pi's authentication patterns
+- Proper error handling when gcloud is missing
+- Correct endpoint format for global region
 
 ## [1.0.0] - 2025-02-05
 

@@ -93,21 +93,13 @@ Once installed and configured, the extension will register the `vertex-anthropic
 
 All Claude models available on Vertex AI are supported:
 
-#### Claude 4 Generation (Extended Thinking)
+#### Latest Generation (Extended Thinking)
 
-- **Claude Opus 4.5** (`claude-opus-4-5@20251101`)
-  - 200K context, 64K max output
-  - ✅ Extended thinking/reasoning
-  - ✅ Image support
-  - Cost: $15/1M input, $75/1M output
-  - **Flagship model** - Most capable
-
-- **Claude Sonnet 4** (`claude-sonnet-4@20250514`)
+- **Claude Sonnet 4.5** (`claude-sonnet-4-5@20250929`)
   - 200K context, 64K max output
   - ✅ Extended thinking/reasoning
   - ✅ Image support
   - Cost: $3/1M input, $15/1M output
-  - **Balanced** - Best price/performance
 
 #### Claude 3.5 Family
 

@@ -1,6 +1,6 @@
 {
   "name": "@skyfallsin/pi-vertex-anthropic",
-  "version": "2.2.0",
+  "version": "2.0.0",
   "description": "Pi coding agent extension for Claude via Google Cloud Vertex AI",
   "main": "index.ts",
   "type": "module",

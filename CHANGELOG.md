@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-02-05
+
+### Added
+- **Claude Opus 4.5** - Flagship model with extended thinking ($15/$75 per 1M tokens)
+- Now have 8 models total (was 7)
+
+### Note
+- Claude Sonnet 4.5 is the LATEST model (the one you're using right now!)
+- Both Opus 4.5 and Sonnet 4.5 exist and are supported
+- PR #1157 in badlogic/pi-mono has older models (Sonnet 4 instead of 4.5)
+
 ## [2.0.0] - 2025-02-05
 
 ### Changed

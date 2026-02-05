@@ -648,6 +648,7 @@ export default function (pi: ExtensionAPI) {
 		api: "vertex-anthropic-api",
 
 		models: [
+			// Claude Sonnet 4.5 (Latest - Extended Thinking)
 			{
 				id: "claude-sonnet-4-5@20250929",
 				name: "Claude Sonnet 4.5 (Vertex)",
@@ -656,6 +657,72 @@ export default function (pi: ExtensionAPI) {
 				cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
 				contextWindow: 200000,
 				maxTokens: 64000,
+			},
+
+			// Claude 3.5 Sonnet v2
+			{
+				id: "claude-3-5-sonnet-v2@20241022",
+				name: "Claude 3.5 Sonnet v2 (Vertex)",
+				reasoning: false,
+				input: ["text", "image"],
+				cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+				contextWindow: 200000,
+				maxTokens: 8192,
+			},
+
+			// Claude 3.5 Sonnet (Original)
+			{
+				id: "claude-3-5-sonnet@20240620",
+				name: "Claude 3.5 Sonnet (Vertex)",
+				reasoning: false,
+				input: ["text", "image"],
+				cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+				contextWindow: 200000,
+				maxTokens: 8192,
+			},
+
+			// Claude 3.5 Haiku
+			{
+				id: "claude-3-5-haiku@20241022",
+				name: "Claude 3.5 Haiku (Vertex)",
+				reasoning: false,
+				input: ["text", "image"],
+				cost: { input: 0.8, output: 4, cacheRead: 0.08, cacheWrite: 1 },
+				contextWindow: 200000,
+				maxTokens: 8192,
+			},
+
+			// Claude 3 Opus
+			{
+				id: "claude-3-opus@20240229",
+				name: "Claude 3 Opus (Vertex)",
+				reasoning: false,
+				input: ["text", "image"],
+				cost: { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
+				contextWindow: 200000,
+				maxTokens: 4096,
+			},
+
+			// Claude 3 Sonnet
+			{
+				id: "claude-3-sonnet@20240229",
+				name: "Claude 3 Sonnet (Vertex)",
+				reasoning: false,
+				input: ["text", "image"],
+				cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+				contextWindow: 200000,
+				maxTokens: 4096,
+			},
+
+			// Claude 3 Haiku
+			{
+				id: "claude-3-haiku@20240307",
+				name: "Claude 3 Haiku (Vertex)",
+				reasoning: false,
+				input: ["text", "image"],
+				cost: { input: 0.25, output: 1.25, cacheRead: 0.03, cacheWrite: 0.3 },
+				contextWindow: 200000,
+				maxTokens: 4096,
 			},
 		],
 

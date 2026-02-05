@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-02-05
+
+### Changed
+- **BREAKING**: Replaced hardcoded configuration with environment variables
+- **BREAKING**: Configuration now uses `VERTEX_PROJECT_ID`, `VERTEX_REGION`, `VERTEX_GCLOUD_PATH`
+- Integrated with Pi's `/login` command for proper authentication
+- Auto-detection of gcloud binary from common locations
+- Simplified installation - no manual file editing required
+
+### Added
+- All available Claude models on Vertex AI (7 models total)
+  - Claude Sonnet 4.5 (Extended Thinking)
+  - Claude 3.5 Sonnet v2
+  - Claude 3.5 Sonnet
+  - Claude 3.5 Haiku
+  - Claude 3 Opus
+  - Claude 3 Sonnet
+  - Claude 3 Haiku
+- OAuth-style provider registration for `/login` support
+- Helpful notifications when configuration is missing
+- Better error messages and troubleshooting guidance
+
+### Fixed
+- TypeScript import compatibility issues
+- Extension now follows Pi's authentication patterns
+
 ## [1.0.0] - 2025-02-05
 
 ### Added

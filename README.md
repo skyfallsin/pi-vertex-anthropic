@@ -51,28 +51,44 @@ npm install
 
 ## Configuration
 
-Edit `~/.pi/agent/extensions/vertex-anthropic/index.ts` to configure your GCP settings:
-
-```typescript
-const PROJECT = "your-gcp-project-id";  // Your GCP project ID
-const REGION = "us-east5";              // Vertex AI region
-const GCLOUD_PATH = "/path/to/gcloud";  // Path to gcloud binary
-```
-
-Common gcloud paths:
-- macOS/Linux: `/usr/local/bin/gcloud` or `~/google-cloud-sdk/bin/gcloud`
-- Cloud Shell: `/usr/bin/gcloud`
-
-### Find Your Settings
+**The Pi Way™** - Use environment variables (recommended):
 
 ```bash
-# Get your project ID
-gcloud config get-value project
+# Add to your ~/.zshrc or ~/.bashrc
+export VERTEX_PROJECT_ID="your-gcp-project-id"
+export VERTEX_REGION="us-east5"  # Optional, defaults to us-east5
+export VERTEX_GCLOUD_PATH="/path/to/gcloud"  # Optional, auto-detected
 
-# Find gcloud path
-which gcloud
+# Reload shell
+source ~/.zshrc
+```
 
-# Test authentication
+The extension auto-detects `gcloud` from common locations. Only set `VERTEX_GCLOUD_PATH` if you have a non-standard installation.
+
+### Authentication
+
+Use Pi's `/login` command:
+
+```bash
+pi
+/login  # Select "Google Cloud Vertex AI (gcloud)"
+```
+
+This tests your gcloud authentication and project configuration.
+
+**Manual Setup:**
+
+```bash
+# 1. Authenticate with gcloud
+gcloud auth login
+
+# 2. Set your project
+gcloud config set project YOUR_PROJECT_ID
+
+# 3. Enable Vertex AI API
+gcloud services enable aiplatform.googleapis.com
+
+# 4. Test access
 gcloud auth print-access-token
 ```
 
@@ -126,18 +142,20 @@ All Claude models available on Vertex AI are supported:
   - ✅ Image support
   - Cost: $0.25/1M input, $1.25/1M output
 
-### Selecting the Model in Pi
+### Selecting the Model
 
-In Pi's settings (`~/.pi/agent/settings.json`) or via the UI, select:
+Use Pi's `/model` command or `Ctrl+L` to switch models:
 
-```json
-{
-  "model": "claude-sonnet-4-5@20250929",
-  "provider": "vertex-anthropic"
-}
+```bash
+pi
+/model  # Interactive model selector
 ```
 
-Or use the Pi TUI to switch models interactively.
+Or start with a specific model:
+
+```bash
+pi --model claude-sonnet-4-5@20250929 --provider vertex-anthropic
+```
 
 ## How It Works
 
@@ -201,24 +219,48 @@ npm install
 
 ## Troubleshooting
 
+### "No GCP project configured"
+
+Set the environment variable:
+```bash
+export VERTEX_PROJECT_ID="your-project-id"
+```
+
+Or find your project ID:
+```bash
+gcloud config get-value project
+```
+
 ### Authentication Errors
 
 ```bash
 # Re-authenticate
 gcloud auth login
 
-# Verify token generation
+# Verify token generation (should print a long token)
 gcloud auth print-access-token
 
 # Check active account
 gcloud auth list
 ```
 
+### "gcloud: command not found"
+
+Install Google Cloud SDK: https://cloud.google.com/sdk/docs/install
+
+Or specify the path:
+```bash
+export VERTEX_GCLOUD_PATH="/path/to/gcloud"
+```
+
 ### Vertex AI API Not Enabled
 
 ```bash
-# Enable Vertex AI API
+# Enable for your project
 gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID
+
+# Verify it's enabled
+gcloud services list --enabled | grep aiplatform
 ```
 
 ### Permission Issues
@@ -227,12 +269,15 @@ Ensure your GCP account has:
 - `roles/aiplatform.user` or higher
 - Vertex AI API access in the specified region
 
+Check IAM permissions:
+```bash
+gcloud projects get-iam-policy YOUR_PROJECT_ID
+```
+
 ### Rate Limits
 
-Vertex AI has different quotas than direct Anthropic API. Check your quotas:
-```bash
-gcloud compute project-info describe --project=YOUR_PROJECT_ID
-```
+Vertex AI has different quotas than direct Anthropic API. Check quotas in the GCP Console:
+https://console.cloud.google.com/iam-admin/quotas
 
 ## Supported Regions
 

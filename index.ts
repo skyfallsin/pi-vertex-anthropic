@@ -1,11 +1,10 @@
 /**
- * Vertex AI Anthropic Provider
+ * Vertex AI Anthropic Provider Extension for Pi
  *
- * Routes Claude models through Google Cloud Vertex AI using gcloud auth.
- * Uses the :streamRawPredict endpoint which returns standard Anthropic SSE.
+ * Provides Claude models through Google Cloud Vertex AI.
+ * Authentication via gcloud CLI (/login) or environment variables.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import {
 	type Api,
 	type AssistantMessage,
@@ -26,6 +25,44 @@ import {
 } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { execSync } from "node:child_process";
+
+// =============================================================================
+// Configuration
+// =============================================================================
+
+/**
+ * Configuration can be set via:
+ * 1. Environment variables (recommended)
+ * 2. ~/.pi/agent/settings.json
+ * 3. Hardcoded defaults below
+ */
+
+function getConfig() {
+	return {
+		project: process.env.VERTEX_PROJECT_ID || "your-gcp-project-id",
+		region: process.env.VERTEX_REGION || "us-east5",
+		gcloudPath: process.env.VERTEX_GCLOUD_PATH || findGcloud(),
+	};
+}
+
+function findGcloud(): string {
+	// Try common locations
+	const paths = [
+		"/usr/local/bin/gcloud",
+		"/usr/bin/gcloud",
+		`${process.env.HOME}/google-cloud-sdk/bin/gcloud`,
+		"gcloud", // Let OS find it
+	];
+
+	for (const path of paths) {
+		try {
+			execSync(`${path} version`, { stdio: "ignore", timeout: 1000 });
+			return path;
+		} catch {}
+	}
+
+	return "gcloud"; // Fallback
+}
 
 // =============================================================================
 // Message Transformation (handles incomplete tool calls)
@@ -190,40 +227,6 @@ function transformMessages(
 	}
 
 	return result;
-}
-
-// =============================================================================
-// Config - UPDATE THESE VALUES FOR YOUR SETUP
-// =============================================================================
-
-/**
- * Your Google Cloud Project ID
- * Find with: gcloud config get-value project
- */
-const PROJECT = "your-gcp-project-id";
-
-/**
- * Vertex AI Region
- * Options: us-east5, us-central1, europe-west1, asia-southeast1
- */
-const REGION = "us-east5";
-
-/**
- * Path to gcloud CLI binary
- * Find with: which gcloud
- * Common: /usr/local/bin/gcloud or ~/google-cloud-sdk/bin/gcloud
- */
-const GCLOUD_PATH = "/usr/local/bin/gcloud";
-
-function getAccessToken(): string {
-	return execSync(`${GCLOUD_PATH} auth print-access-token`, {
-		encoding: "utf-8",
-		timeout: 10000,
-	}).trim();
-}
-
-function getVertexUrl(modelId: string): string {
-	return `https://${REGION}-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/${REGION}/publishers/anthropic/models/${modelId}:streamRawPredict`;
 }
 
 // =============================================================================
@@ -458,7 +461,16 @@ function streamVertexAnthropic(
 		};
 
 		try {
-			const token = getAccessToken();
+			const config = getConfig();
+			const project = (model as any).project || config.project;
+			const region = (model as any).region || config.region;
+			const gcloudPath = (model as any).gcloudPath || config.gcloudPath;
+
+			// Get access token
+			const token = execSync(`${gcloudPath} auth print-access-token`, {
+				encoding: "utf-8",
+				timeout: 10000,
+			}).trim();
 
 			// Build Anthropic Messages API request body
 			const body: any = {
@@ -499,7 +511,7 @@ function streamVertexAnthropic(
 
 			// Make request to Vertex AI streamRawPredict endpoint
 			const vertexModelId = (model as any).vertexModelId || model.id;
-			const url = getVertexUrl(vertexModelId);
+			const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${project}/locations/${region}/publishers/anthropic/models/${vertexModelId}:streamRawPredict`;
 
 			const response = await fetch(url, {
 				method: "POST",
@@ -642,10 +654,63 @@ function streamVertexAnthropic(
 // =============================================================================
 
 export default function (pi: ExtensionAPI) {
+	const config = getConfig();
+
+	// Register provider with OAuth-style /login support
 	pi.registerProvider("vertex-anthropic", {
-		baseUrl: `https://${REGION}-aiplatform.googleapis.com`,
-		apiKey: `!${GCLOUD_PATH} auth print-access-token`,
+		baseUrl: `https://${config.region}-aiplatform.googleapis.com`,
 		api: "vertex-anthropic-api",
+
+		// OAuth configuration for /login command
+		oauth: {
+			name: "Google Cloud Vertex AI (gcloud)",
+			async login(callbacks) {
+				try {
+					// Test gcloud auth
+					const token = execSync(`${config.gcloudPath} auth print-access-token`, {
+						encoding: "utf-8",
+						timeout: 10000,
+					}).trim();
+
+					if (!token || token.includes("ERROR")) {
+						throw new Error("Not authenticated with gcloud");
+					}
+
+					// Verify project access
+					const project = process.env.VERTEX_PROJECT_ID || config.project;
+					if (project === "your-gcp-project-id") {
+						await callbacks.onPrompt({
+							message: "Set VERTEX_PROJECT_ID environment variable or edit the extension",
+						});
+						throw new Error("No GCP project configured");
+					}
+
+					// Store dummy credentials (we use gcloud each time)
+					return {
+						refresh: "gcloud",
+						access: "gcloud",
+						expires: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
+					};
+				} catch (error) {
+					callbacks.onAuth({
+						type: "error",
+						message:
+							error instanceof Error
+								? error.message
+								: "Failed to authenticate. Run: gcloud auth login",
+					});
+					throw error;
+				}
+			},
+			async refreshToken(credentials) {
+				// Always use fresh token from gcloud
+				return credentials;
+			},
+			getApiKey(_credentials) {
+				// Return command that Pi will execute to get token
+				return `!${config.gcloudPath} auth print-access-token`;
+			},
+		},
 
 		models: [
 			// Claude Sonnet 4.5 (Latest - Extended Thinking)
@@ -727,5 +792,15 @@ export default function (pi: ExtensionAPI) {
 		],
 
 		streamSimple: streamVertexAnthropic,
+	});
+
+	// Provide helpful status when extension loads
+	pi.on("session_start", async (_event, ctx) => {
+		if (config.project === "your-gcp-project-id") {
+			ctx.ui?.notify(
+				"Vertex AI: Set VERTEX_PROJECT_ID environment variable to configure",
+				"warning",
+			);
+		}
 	});
 }

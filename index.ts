@@ -6,7 +6,6 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import type { ContentBlockParam, MessageCreateParamsStreaming } from "@anthropic-ai/sdk/resources/messages.js";
 import {
 	type Api,
 	type AssistantMessage,
@@ -285,7 +284,7 @@ function convertMessages(messages: Message[], model: Model<Api>, _tools?: Tool[]
 					params.push({ role: "user", content: sanitizeSurrogates(msg.content) });
 				}
 			} else {
-				const blocks: ContentBlockParam[] = msg.content.map((item) =>
+				const blocks: any[] = msg.content.map((item) =>
 					item.type === "text"
 						? { type: "text" as const, text: sanitizeSurrogates(item.text) }
 						: {
@@ -298,7 +297,7 @@ function convertMessages(messages: Message[], model: Model<Api>, _tools?: Tool[]
 				}
 			}
 		} else if (msg.role === "assistant") {
-			const blocks: ContentBlockParam[] = [];
+			const blocks: any[] = [];
 			for (const block of msg.content) {
 				if (block.type === "text" && block.text.trim()) {
 					blocks.push({ type: "text", text: sanitizeSurrogates(block.text) });

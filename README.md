@@ -82,12 +82,49 @@ Once installed and configured, the extension will register the `vertex-anthropic
 
 ### Available Models
 
+All Claude models available on Vertex AI are supported:
+
+#### Latest Generation (Extended Thinking)
+
 - **Claude Sonnet 4.5** (`claude-sonnet-4-5@20250929`)
-  - 200K context window
-  - 64K max output tokens
-  - Extended thinking/reasoning support
-  - Image input support
-  - Cost: $3/1M input tokens, $15/1M output tokens
+  - 200K context, 64K max output
+  - ✅ Extended thinking/reasoning
+  - ✅ Image support
+  - Cost: $3/1M input, $15/1M output
+
+#### Claude 3.5 Family
+
+- **Claude 3.5 Sonnet v2** (`claude-3-5-sonnet-v2@20241022`)
+  - 200K context, 8K max output
+  - ✅ Image support
+  - Cost: $3/1M input, $15/1M output
+
+- **Claude 3.5 Sonnet** (`claude-3-5-sonnet@20240620`)
+  - 200K context, 8K max output
+  - ✅ Image support
+  - Cost: $3/1M input, $15/1M output
+
+- **Claude 3.5 Haiku** (`claude-3-5-haiku@20241022`)
+  - 200K context, 8K max output
+  - ✅ Image support
+  - Cost: $0.80/1M input, $4/1M output
+
+#### Claude 3 Family
+
+- **Claude 3 Opus** (`claude-3-opus@20240229`)
+  - 200K context, 4K max output
+  - ✅ Image support
+  - Cost: $15/1M input, $75/1M output
+
+- **Claude 3 Sonnet** (`claude-3-sonnet@20240229`)
+  - 200K context, 4K max output
+  - ✅ Image support
+  - Cost: $3/1M input, $15/1M output
+
+- **Claude 3 Haiku** (`claude-3-haiku@20240307`)
+  - 200K context, 4K max output
+  - ✅ Image support
+  - Cost: $0.25/1M input, $1.25/1M output
 
 ### Selecting the Model in Pi
 

@@ -29,6 +29,14 @@ A [Pi coding agent](https://github.com/badlogic/pi) extension that enables Claud
 
 ### Install Extension
 
+**Option 1: Quick Install (Recommended)**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/skyfallsin/pi-vertex-anthropic/main/install.sh | bash
+```
+
+**Option 2: Manual Install**
+
 ```bash
 # Create the extension directory
 mkdir -p ~/.pi/agent/extensions/vertex-anthropic

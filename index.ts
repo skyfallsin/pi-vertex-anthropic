@@ -927,10 +927,21 @@ export default function (pi: ExtensionAPI) {
 		},
 
 		models: [
-			// Claude Sonnet 4.5 (Latest - Extended Thinking)
+			// Claude Opus 4.5 (Flagship - Extended Thinking)
 			{
-				id: "claude-sonnet-4-5@20250929",
-				name: "Claude Sonnet 4.5 (Vertex)",
+				id: "claude-opus-4-5@20251101",
+				name: "Claude Opus 4.5 (Vertex)",
+				reasoning: true,
+				input: ["text", "image"],
+				cost: { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
+				contextWindow: 200000,
+				maxTokens: 64000,
+			},
+
+			// Claude Sonnet 4 (Balanced - Extended Thinking)
+			{
+				id: "claude-sonnet-4@20250514",
+				name: "Claude Sonnet 4 (Vertex)",
 				reasoning: true,
 				input: ["text", "image"],
 				cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },

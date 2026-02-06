@@ -93,21 +93,34 @@ Once installed and configured, the extension will register the `vertex-anthropic
 
 All Claude models available on Vertex AI are supported:
 
-#### Claude 4.5 Generation (Extended Thinking)
+#### Claude 4.6 & 4.5 Generation (Extended Thinking)
+
+- **Claude Opus 4.6** (`claude-opus-4-6`)
+  - 200K context, 64K max output
+  - ✅ Extended thinking/reasoning
+  - ✅ Image support
+  - Cost: $5/1M input, $25/1M output
+  - **Latest Flagship** - Most intelligent model
 
 - **Claude Opus 4.5** (`claude-opus-4-5@20251101`)
   - 200K context, 64K max output
   - ✅ Extended thinking/reasoning
   - ✅ Image support
   - Cost: $15/1M input, $75/1M output
-  - **Flagship** - Most capable
 
 - **Claude Sonnet 4.5** (`claude-sonnet-4-5@20250929`)
   - 200K context, 64K max output
   - ✅ Extended thinking/reasoning
   - ✅ Image support
   - Cost: $3/1M input, $15/1M output
-  - **Latest** - Best price/performance
+  - **Best price/performance**
+
+- **Claude Haiku 4.5** (`claude-haiku-4-5@20251001`)
+  - 200K context, 64K max output
+  - ✅ Extended thinking/reasoning
+  - ✅ Image support
+  - Cost: $1/1M input, $5/1M output
+  - **Fast & economical**
 
 #### Claude 3.5 Family
 
@@ -155,6 +168,10 @@ pi
 Or start with a specific model:
 
 ```bash
+# Use the latest flagship model
+pi --model claude-opus-4-6 --provider vertex-anthropic
+
+# Or use Sonnet 4.5 for best price/performance
 pi --model claude-sonnet-4-5@20250929 --provider vertex-anthropic
 ```
 
@@ -295,10 +312,14 @@ The `/login` command lets you choose your preferred region.
 
 | Model | Direct Anthropic API | Vertex AI |
 |-------|---------------------|-----------|
+| Claude Opus 4.6 Input | $5/1M tokens | $5/1M tokens |
+| Claude Opus 4.6 Output | $25/1M tokens | $25/1M tokens |
 | Claude Sonnet 4.5 Input | $3/1M tokens | $3/1M tokens |
 | Claude Sonnet 4.5 Output | $15/1M tokens | $15/1M tokens |
-| Cache Reads | $0.30/1M tokens | $0.30/1M tokens |
-| Cache Writes | $3.75/1M tokens | $3.75/1M tokens |
+| Claude Haiku 4.5 Input | $1/1M tokens | $1/1M tokens |
+| Claude Haiku 4.5 Output | $5/1M tokens | $5/1M tokens |
+| Cache Reads | 10% of input cost | 10% of input cost |
+| Cache Writes | 25% of input cost | 25% of input cost |
 
 *Prices as of February 2025. Check GCP pricing for current rates.*
 

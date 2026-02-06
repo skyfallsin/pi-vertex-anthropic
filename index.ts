@@ -927,7 +927,18 @@ export default function (pi: ExtensionAPI) {
 		},
 
 		models: [
-			// Claude Opus 4.5 (Flagship - Extended Thinking)
+			// Claude Opus 4.6 (Latest Flagship - Extended Thinking)
+			{
+				id: "claude-opus-4-6",
+				name: "Claude Opus 4.6 (Vertex)",
+				reasoning: true,
+				input: ["text", "image"],
+				cost: { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 },
+				contextWindow: 200000,
+				maxTokens: 64000,
+			},
+
+			// Claude Opus 4.5 (Extended Thinking)
 			{
 				id: "claude-opus-4-5@20251101",
 				name: "Claude Opus 4.5 (Vertex)",
@@ -938,13 +949,24 @@ export default function (pi: ExtensionAPI) {
 				maxTokens: 64000,
 			},
 
-			// Claude Sonnet 4.5 (Latest - Extended Thinking)
+			// Claude Sonnet 4.5 (Extended Thinking)
 			{
 				id: "claude-sonnet-4-5@20250929",
 				name: "Claude Sonnet 4.5 (Vertex)",
 				reasoning: true,
 				input: ["text", "image"],
 				cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+				contextWindow: 200000,
+				maxTokens: 64000,
+			},
+
+			// Claude Haiku 4.5 (Fast Extended Thinking)
+			{
+				id: "claude-haiku-4-5@20251001",
+				name: "Claude Haiku 4.5 (Vertex)",
+				reasoning: true,
+				input: ["text", "image"],
+				cost: { input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 },
 				contextWindow: 200000,
 				maxTokens: 64000,
 			},

@@ -32,15 +32,31 @@ import { execSync } from "node:child_process";
 
 /**
  * Configuration can be set via:
- * 1. Environment variables (recommended)
- * 2. ~/.pi/agent/settings.json
- * 3. Hardcoded defaults below
+ * 1. Environment variables (highest priority)
+ * 2. Persisted credentials from /login (stored in ~/.pi/agent/auth.json)
+ * 3. Hardcoded defaults (fallback)
  */
 
+function getPersistedCredentials(): { project?: string; region?: string } {
+	try {
+		const authPath = `${process.env.HOME}/.pi/agent/auth.json`;
+		const data = JSON.parse(require("fs").readFileSync(authPath, "utf-8"));
+		const cred = data["vertex-anthropic"];
+		if (cred?.type === "oauth") {
+			return {
+				project: cred.project,
+				region: cred.region,
+			};
+		}
+	} catch {}
+	return {};
+}
+
 function getConfig() {
+	const persisted = getPersistedCredentials();
 	return {
-		project: process.env.VERTEX_PROJECT_ID || "your-gcp-project-id",
-		region: process.env.VERTEX_REGION || "us-east5",
+		project: process.env.VERTEX_PROJECT_ID || persisted.project || "your-gcp-project-id",
+		region: process.env.VERTEX_REGION || persisted.region || "us-east5",
 		gcloudPath: process.env.VERTEX_GCLOUD_PATH || findGcloud(),
 	};
 }
@@ -884,24 +900,24 @@ export default function (pi: ExtensionAPI) {
 					message: `✓ Configured successfully!\n\n` +
 						`Project: ${project}\n` +
 						`Region: ${region}\n\n` +
-						`To persist these settings, add to your ~/.zshrc or ~/.bashrc:\n\n` +
-						`  export VERTEX_PROJECT_ID="${project}"\n` +
-						`  export VERTEX_REGION="${region}"\n\n` +
+						`Settings persisted to ~/.pi/agent/auth.json.\n` +
 						`If authentication fails later, run: gcloud auth login`,
 				});
 
-				// Return credentials (gcloud auth persists separately)
+				// Return credentials with project/region persisted in auth.json
 				return {
-					refresh: Date.now().toString(), // Just a timestamp for tracking
+					refresh: Date.now().toString(),
 					access: "gcloud",
 					expires: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
+					project,
+					region,
 				};
 			},
 			async refreshToken(credentials) {
-				// Tokens are always fresh from gcloud, just return existing credentials
+				// Tokens are always fresh from gcloud, preserve project/region
 				return {
 					...credentials,
-					refresh: Date.now().toString(), // Update timestamp
+					refresh: Date.now().toString(),
 				};
 			},
 			getApiKey(_credentials) {
@@ -1045,7 +1061,7 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
 		if (config.project === "your-gcp-project-id") {
 			ctx.ui?.notify(
-				"Vertex AI: Set VERTEX_PROJECT_ID environment variable to configure",
+				"Vertex AI: Run /login to configure project and region",
 				"warning",
 			);
 		}

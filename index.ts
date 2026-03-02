@@ -177,6 +177,7 @@ function transformMessages(
 	const result: Message[] = [];
 	let pendingToolCalls: ToolCall[] = [];
 	let existingToolResultIds = new Set<string>();
+	let skippedToolCallIds = new Set<string>();
 
 	for (let i = 0; i < transformed.length; i++) {
 		const msg = transformed[i];
@@ -201,9 +202,14 @@ function transformMessages(
 			}
 
 			// Skip errored/aborted assistant messages entirely.
-			// These are incomplete turns that shouldn't be replayed
+			// These are incomplete turns that shouldn't be replayed.
+			// Also track their tool call IDs so we can drop the corresponding tool results.
 			const assistantMsg = msg as AssistantMessage;
 			if (assistantMsg.stopReason === "error" || assistantMsg.stopReason === "aborted") {
+				const toolCalls = assistantMsg.content.filter((b) => b.type === "toolCall") as ToolCall[];
+				for (const tc of toolCalls) {
+					skippedToolCallIds.add(tc.id);
+				}
 				continue;
 			}
 
@@ -216,7 +222,12 @@ function transformMessages(
 
 			result.push(msg);
 		} else if (msg.role === "toolResult") {
-			existingToolResultIds.add((msg as ToolResultMessage).toolCallId);
+			const toolResultMsg = msg as ToolResultMessage;
+			// Drop tool results whose assistant tool_use was skipped (errored/aborted)
+			if (skippedToolCallIds.has(toolResultMsg.toolCallId)) {
+				continue;
+			}
+			existingToolResultIds.add(toolResultMsg.toolCallId);
 			result.push(msg);
 		} else if (msg.role === "user") {
 			// User message interrupts tool flow - insert synthetic results for orphaned calls
@@ -525,7 +536,8 @@ function streamVertexAnthropic(
 
 				if (customBudget) {
 					body.thinking = { type: "enabled", budget_tokens: customBudget };
-					body.max_tokens = Math.max(body.max_tokens, customBudget + 1000);
+					// max_tokens MUST be greater than budget_tokens
+					body.max_tokens = Math.max(body.max_tokens, customBudget + 1024);
 				} else if (isAdaptiveSupported) {
 					// Use Adaptive Thinking for newer models
 					let effort = "high";
@@ -538,6 +550,7 @@ function streamVertexAnthropic(
 					body.output_config = { effort };
 				} else {
 					// Fallback to manual budgeting for older models
+					// Clamp budget to leave room for output: max_tokens MUST be > budget_tokens
 					const defaultBudgets: Record<string, number> = {
 						minimal: 1024,
 						low: 4096,
@@ -547,7 +560,13 @@ function streamVertexAnthropic(
 					};
 					const budget = defaultBudgets[options.reasoning] ?? 10240;
 					body.thinking = { type: "enabled", budget_tokens: budget };
-					body.max_tokens = Math.max(body.max_tokens, budget + 1000);
+					// Ensure max_tokens always exceeds budget_tokens
+					body.max_tokens = Math.max(body.max_tokens, budget + 1024);
+					// If model can't support this, clamp budget down instead
+					if (body.max_tokens > model.maxTokens) {
+						body.max_tokens = model.maxTokens;
+						body.thinking.budget_tokens = Math.max(1024, model.maxTokens - 1024);
+					}
 				}
 			}
 

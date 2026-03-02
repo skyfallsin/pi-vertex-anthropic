@@ -512,7 +512,8 @@ function streamVertexAnthropic(
 
 			// Handle thinking/reasoning
 			if (options?.reasoning && model.reasoning) {
-				const isAdaptiveSupported = model.id.includes("-4-6") || model.id.includes("-3-7") || model.id.includes("-4-5"); // Assume newer models support adaptive
+				// Adaptive thinking is only supported on Claude 4.6 models (Opus 4.6, Sonnet 4.6)
+				const isAdaptiveSupported = model.id.includes("-4-6");
 				const isOpus46 = model.id.includes("opus-4-6");
 
 				const customBudget = options.thinkingBudgets?.[options.reasoning as keyof typeof options.thinkingBudgets];

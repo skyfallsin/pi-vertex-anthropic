@@ -3,13 +3,33 @@
 # Pi Vertex Anthropic Extension Installer
 # Installs the extension to ~/.pi/agent/extensions/vertex-anthropic
 #
+# Usage:
+#   bash install.sh          # Clone from GitHub
+#   bash install.sh --dev    # Symlink current directory (for development)
+#
 
 set -e
 
 EXTENSION_DIR="$HOME/.pi/agent/extensions/vertex-anthropic"
 REPO_URL="https://github.com/skyfallsin/pi-vertex-anthropic.git"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DEV_MODE=false
 
-echo "🚀 Installing Pi Vertex Anthropic Extension..."
+# Parse arguments
+for arg in "$@"; do
+    case "$arg" in
+        --dev)
+            DEV_MODE=true
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: bash install.sh [--dev]"
+            exit 1
+            ;;
+    esac
+done
+
+echo "📦 Installing Pi Vertex Anthropic Extension..."
 echo ""
 
 # Check if Pi is installed
@@ -29,33 +49,46 @@ fi
 # Create extensions directory if it doesn't exist
 mkdir -p "$(dirname "$EXTENSION_DIR")"
 
-# Clone or update repository
-if [ -d "$EXTENSION_DIR" ]; then
-    echo "📦 Extension already installed. Updating..."
-    cd "$EXTENSION_DIR"
-    git pull
-else
-    echo "📦 Cloning repository..."
-    git clone "$REPO_URL" "$EXTENSION_DIR"
-    cd "$EXTENSION_DIR"
+# Remove existing installation if present
+if [ -L "$EXTENSION_DIR" ]; then
+    echo "🔗 Removing existing symlink..."
+    rm "$EXTENSION_DIR"
+elif [ -d "$EXTENSION_DIR" ]; then
+    echo "📁 Removing existing installation..."
+    rm -rf "$EXTENSION_DIR"
 fi
 
-# Install dependencies
-echo "📚 Installing dependencies..."
-npm install
+if [ "$DEV_MODE" = true ]; then
+    echo "🔧 Dev mode: symlinking $SCRIPT_DIR -> $EXTENSION_DIR"
+    ln -s "$SCRIPT_DIR" "$EXTENSION_DIR"
+
+    # Install dependencies in the source directory if needed
+    if [ ! -d "$SCRIPT_DIR/node_modules" ]; then
+        echo "📥 Installing dependencies..."
+        cd "$SCRIPT_DIR"
+        npm install
+    fi
+else
+    echo "📥 Cloning repository..."
+    git clone "$REPO_URL" "$EXTENSION_DIR"
+    cd "$EXTENSION_DIR"
+
+    echo "📥 Installing dependencies..."
+    npm install
+fi
 
 echo ""
 echo "✅ Installation complete!"
+if [ "$DEV_MODE" = true ]; then
+    echo "   Mode: dev (symlinked from $SCRIPT_DIR)"
+else
+    echo "   Mode: release (cloned from GitHub)"
+fi
 echo ""
 echo "⚙️  Next steps:"
-echo "   1. Edit $EXTENSION_DIR/index.ts"
-echo "   2. Update the config values:"
-echo "      - PROJECT: Your GCP project ID (gcloud config get-value project)"
-echo "      - REGION: Your preferred Vertex AI region"
-echo "      - GCLOUD_PATH: Path to gcloud binary (which gcloud)"
+echo "   1. Restart Pi or run /reload"
+echo "   2. Run /login to configure your GCP project and region"
 echo "   3. Ensure you're authenticated: gcloud auth login"
-echo "   4. Enable Vertex AI API: gcloud services enable aiplatform.googleapis.com"
-echo "   5. Restart Pi or reload extensions"
 echo ""
 echo "📖 Documentation: https://github.com/skyfallsin/pi-vertex-anthropic"
 echo ""

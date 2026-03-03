@@ -378,9 +378,136 @@ function convertMessages(messages: Message[], model: Model<Api>, _tools?: Tool[]
 		}
 	}
 
+	// Validation pass: ensure every tool_result references a tool_use in the
+	// immediately preceding assistant message. This handles edge cases where:
+	// - An assistant message was dropped (empty content after filtering)
+	// - Tool results reference tool_use IDs from a different/skipped assistant turn
+	// - Messages got reordered or corrupted
+	const validated: any[] = [];
+	for (let i = 0; i < params.length; i++) {
+		const msg = params[i];
+
+		if (msg.role === "user" && Array.isArray(msg.content) && msg.content.some((b: any) => b.type === "tool_result")) {
+			// Find the immediately preceding assistant message in validated output
+			const prevAssistant = validated.length > 0 && validated[validated.length - 1].role === "assistant"
+				? validated[validated.length - 1]
+				: null;
+
+			// Collect tool_use IDs from the preceding assistant message
+			const validToolUseIds = new Set<string>();
+			if (prevAssistant && Array.isArray(prevAssistant.content)) {
+				for (const block of prevAssistant.content) {
+					if (block.type === "tool_use") {
+						validToolUseIds.add(block.id);
+					}
+				}
+			}
+
+			// Filter tool_results to only those with a matching tool_use in the preceding assistant
+			const filteredContent = msg.content.filter((block: any) => {
+				if (block.type === "tool_result") {
+					return validToolUseIds.has(block.tool_use_id);
+				}
+				return true; // Keep non-tool_result blocks
+			});
+
+			if (filteredContent.length > 0) {
+				validated.push({ ...msg, content: filteredContent });
+			}
+			// If all tool_results were orphaned, drop the entire user message
+		} else {
+			validated.push(msg);
+		}
+	}
+
+	// Reverse validation: ensure every tool_use in an assistant message has a
+	// corresponding tool_result in the immediately following user message.
+	// Insert synthetic error results for any missing ones.
+	for (let i = 0; i < validated.length; i++) {
+		const msg = validated[i];
+		if (msg.role !== "assistant" || !Array.isArray(msg.content)) continue;
+
+		const toolUseIds = msg.content
+			.filter((b: any) => b.type === "tool_use")
+			.map((b: any) => b.id);
+		if (toolUseIds.length === 0) continue;
+
+		const nextMsg = i + 1 < validated.length ? validated[i + 1] : null;
+		const existingResultIds = new Set<string>();
+		if (nextMsg && nextMsg.role === "user" && Array.isArray(nextMsg.content)) {
+			for (const block of nextMsg.content) {
+				if (block.type === "tool_result") {
+					existingResultIds.add(block.tool_use_id);
+				}
+			}
+		}
+
+		const missingIds = toolUseIds.filter((id: string) => !existingResultIds.has(id));
+		if (missingIds.length > 0) {
+			const syntheticResults = missingIds.map((id: string) => ({
+				type: "tool_result",
+				tool_use_id: id,
+				content: "No result provided",
+				is_error: true,
+			}));
+
+			if (nextMsg && nextMsg.role === "user" && Array.isArray(nextMsg.content)) {
+				// Append synthetic results to existing user message
+				nextMsg.content = [...nextMsg.content, ...syntheticResults];
+			} else {
+				// Insert a new user message with synthetic results
+				validated.splice(i + 1, 0, { role: "user", content: syntheticResults });
+			}
+		}
+	}
+
+	// Merge consecutive messages of the same role (can happen after dropping messages)
+	const merged: any[] = [];
+	for (const msg of validated) {
+		const prev = merged.length > 0 ? merged[merged.length - 1] : null;
+		if (prev && prev.role === msg.role && prev.role === "user") {
+			// Merge user messages
+			if (typeof prev.content === "string" && typeof msg.content === "string") {
+				prev.content = prev.content + "\n" + msg.content;
+			} else {
+				const prevBlocks = typeof prev.content === "string"
+					? [{ type: "text", text: prev.content }]
+					: prev.content;
+				const msgBlocks = typeof msg.content === "string"
+					? [{ type: "text", text: msg.content }]
+					: msg.content;
+				prev.content = [...prevBlocks, ...msgBlocks];
+			}
+		} else if (prev && prev.role === msg.role && prev.role === "assistant") {
+			// Merge assistant messages
+			prev.content = [...(prev.content || []), ...(msg.content || [])];
+		} else {
+			merged.push(msg);
+		}
+	}
+
+	// Ensure conversation starts with user message (Anthropic requirement)
+	while (merged.length > 0 && merged[0].role !== "user") {
+		merged.shift();
+	}
+
+	// Ensure strict user/assistant alternation by inserting placeholder messages
+	const alternated: any[] = [];
+	for (const msg of merged) {
+		const prev = alternated.length > 0 ? alternated[alternated.length - 1] : null;
+		if (prev && prev.role === msg.role) {
+			if (msg.role === "user") {
+				alternated.push({ role: "assistant", content: [{ type: "text", text: "(continued)" }] });
+			} else {
+				alternated.push({ role: "user", content: "(continued)" });
+			}
+		}
+		alternated.push(msg);
+	}
+
 	// Add cache control to last user message
-	if (params.length > 0) {
-		const last = params[params.length - 1];
+	if (alternated.length > 0) {
+		const last = alternated[alternated.length - 1];
 		if (last.role === "user" && Array.isArray(last.content)) {
 			const lastBlock = last.content[last.content.length - 1];
 			if (lastBlock) {
@@ -389,7 +516,7 @@ function convertMessages(messages: Message[], model: Model<Api>, _tools?: Tool[]
 		}
 	}
 
-	return params;
+	return alternated;
 }
 
 function convertTools(tools: Tool[]): any[] {

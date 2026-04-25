@@ -358,3 +358,13 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ---
 
 **Note**: This is an unofficial community extension. Not affiliated with Google Cloud or Anthropic.
+
+## Pi Ecosystem
+
+| Package | Description |
+|---------|-------------|
+| [pi-mem](https://github.com/jo-inc/pi-mem) | Persistent markdown memory for coding agents |
+| [pi-reflect](https://github.com/jo-inc/pi-reflect) | Self-improving behavioral files |
+| [pi-boss](https://github.com/skyfallsin/pi-boss) | Multi-agent orchestration via tmux |
+| [pi-room](https://github.com/skyfallsin/pi-room) | Multi-agent awareness and coordination |
+| [pi-skill-posthog](https://github.com/skyfallsin/pi-skill-posthog) | PostHog analytics skill for pi agents |

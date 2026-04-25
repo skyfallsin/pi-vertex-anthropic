@@ -1,3 +1,6 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/skyfallsin/pi-vertex-anthropic)](https://github.com/skyfallsin/pi-vertex-anthropic/stargazers)
+
 # Pi Vertex Anthropic Extension
 
 A [Pi coding agent](https://github.com/badlogic/pi) extension that enables Claude models through Google Cloud Vertex AI.
